@@ -16,13 +16,13 @@ That's where Queueflow comes in. I couldn't find an npm package that combined Bu
 ## Installation
 
 ```bash
-bun add queueflow
+bun add @benrobo/queueflow
 ```
 
 Or with npm:
 
 ```bash
-npm install queueflow
+npm install @benrobo/queueflow
 ```
 
 You'll also need Redis running (locally or remote). If you don't have it set up yet, you can run it with Docker:
@@ -37,7 +37,7 @@ docker run -d -p 6379:6379 redis:latest
 
 ```typescript
 // tasks/email.ts
-import { defineTask } from "queueflow";
+import { defineTask } from "@benrobo/queueflow";
 
 export const sendWelcomeEmail = defineTask({
   id: "email.welcome",
@@ -54,7 +54,7 @@ If you're using a local Redis instance on the default port, you can skip this st
 
 ```typescript
 // app.ts or index.ts
-import { configure } from "queueflow";
+import { configure } from "@benrobo/queueflow";
 
 configure({
   connection: process.env.REDIS_URL || "redis://localhost:6379",
@@ -157,7 +157,7 @@ const heavyTask = defineTask({
 While the worker auto-starts, you can also start it manually if you prefer:
 
 ```typescript
-import { startWorker } from "queueflow";
+import { startWorker } from "@benrobo/queueflow";
 
 startWorker();
 ```
@@ -170,7 +170,7 @@ Here's a more complete example showing how you might structure tasks in a real a
 
 ```typescript
 // tasks/email.ts
-import { defineTask } from "queueflow";
+import { defineTask } from "@benrobo/queueflow";
 
 export const sendWelcomeEmail = defineTask({
   id: "email.welcome",
@@ -197,7 +197,7 @@ export const sendPasswordReset = defineTask({
 
 ```typescript
 // tasks/orders.ts
-import { defineTask } from "queueflow";
+import { defineTask } from "@benrobo/queueflow";
 
 export const processOrder = defineTask({
   id: "orders.process",
@@ -212,7 +212,7 @@ export const processOrder = defineTask({
 
 ```typescript
 // app.ts
-import { configure } from "queueflow";
+import { configure } from "@benrobo/queueflow";
 import "./tasks/email";
 import "./tasks/orders";
 
