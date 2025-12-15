@@ -6,6 +6,7 @@ class GlobalWorker {
   private static instance: GlobalWorker;
   private workers: Map<string, Worker> = new Map();
   private taskHandlers: Map<string, Function> = new Map();
+  private errorHandlers: Map<string, Function | undefined> = new Map();
   private redis: Redis;
   private isStarted = false;
 
@@ -20,8 +21,14 @@ class GlobalWorker {
     return GlobalWorker.instance;
   }
 
-  registerTask(taskId: string, queue: string, handler: Function): void {
+  registerTask(
+    taskId: string,
+    queue: string,
+    handler: Function,
+    onError?: Function
+  ): void {
     this.taskHandlers.set(taskId, handler);
+    this.errorHandlers.set(taskId, onError);
 
     if (!this.workers.has(queue) && this.isStarted) {
       this.createQueueWorker(queue);
@@ -58,12 +65,12 @@ class GlobalWorker {
         connection: this.redis,
         concurrency: 5,
         removeOnComplete: {
-          age: 100, // this determines the age of the job in seconds
-          count: 100, // this determines the number of jobs to keep
+          age: 100,
+          count: 100,
         },
         removeOnFail: {
-          age: 500, // this determines the age of the job in seconds
-          count: 500, // this determines the number of jobs to keep
+          age: 500,
+          count: 500,
         },
       }
     );
@@ -72,8 +79,22 @@ class GlobalWorker {
       console.log(`✅ ${job.name} completed`);
     });
 
-    worker.on("failed", (job, err) => {
+    worker.on("failed", async (job, err) => {
       console.error(`❌ ${job?.name} failed:`, err.message);
+
+      if (job) {
+        const errorHandler = this.errorHandlers.get(job.name);
+        if (errorHandler) {
+          try {
+            await errorHandler(err, job.data);
+          } catch (handlerError) {
+            console.error(
+              `Error in onError handler for ${job.name}:`,
+              handlerError
+            );
+          }
+        }
+      }
     });
 
     this.workers.set(queueName, worker);

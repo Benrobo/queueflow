@@ -8,12 +8,14 @@ interface TaskConfig<T> {
   queue?: string;
   retry?: number;
   handler: (payload: T) => Promise<void>;
+  onError?: (error: Error, payload: T) => Promise<void> | void;
 }
 
 export class Task<T = any> {
   public readonly id: string;
   public readonly queue: string;
   private readonly handler: (payload: T) => Promise<void>;
+  private readonly onError?: (error: Error, payload: T) => Promise<void> | void;
   private queueInstance: Queue | null = null;
 
   constructor(config: TaskConfig<T>) {
@@ -22,9 +24,10 @@ export class Task<T = any> {
       config.queue || config.id.split(".")[0] || getConfig().defaultQueue!;
 
     this.handler = config.handler;
+    this.onError = config.onError;
 
     const globalWorker = GlobalWorker.getInstance();
-    globalWorker.registerTask(this.id, this.queue, this.handler);
+    globalWorker.registerTask(this.id, this.queue, this.handler, this.onError);
   }
 
   async trigger(payload: T, options?: JobsOptions): Promise<void> {

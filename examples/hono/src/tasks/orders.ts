@@ -18,6 +18,12 @@ export const processOrder = defineTask({
 
     console.log(`✅ Order ${payload.orderId} processed successfully`);
   },
+  onError: async (error, payload) => {
+    console.error(
+      `❌ Failed to process order ${payload.orderId}:`,
+      error.message
+    );
+  },
 });
 
 export const sendOrderConfirmation = defineTask({
