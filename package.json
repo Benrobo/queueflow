@@ -1,0 +1,32 @@
+{
+  "name": "queueflow",
+  "version": "0.0.1",
+  "description": "A simple, type-safe task queue library built on BullMQ",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "packageManager": "bun@latest",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "bun run build"
+  },
+  "keywords": [
+    "queue",
+    "task",
+    "bullmq",
+    "redis",
+    "background-jobs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist"
+  ]
+}
