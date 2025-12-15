@@ -306,7 +306,3 @@ MIT
 ## Contributing
 
 Contributions are welcome! This is a young project, so I'm open to ideas, bug reports, and pull requests.
-
----
-
-Built with ❤️ for developers who want the best of both worlds: great DX and infrastructure control.
