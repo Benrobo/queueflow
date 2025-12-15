@@ -3,7 +3,11 @@ import { configure } from "@benrobo/queueflow";
 import "./tasks/email";
 import "./tasks/orders";
 import { sendWelcomeEmail, sendPasswordReset } from "./tasks/email";
-import { processOrder, sendOrderConfirmation } from "./tasks/orders";
+import {
+  processOrder,
+  sendOrderConfirmation,
+  sendOrderConfirmationWithOnError,
+} from "./tasks/orders";
 
 configure({
   connection: process.env.REDIS_URL || "redis://localhost:6379",
@@ -57,6 +61,25 @@ app.get("/order", async (c) => {
   );
 
   return c.json({ success: true, message: "Order queued", orderId });
+});
+
+app.get("/order-with-on-error", async (c) => {
+  const userId = c.req.query("userId") || "user_123";
+  const items = c.req.query("items")?.split(",") || ["item1", "item2"];
+  const total = Number(c.req.query("total")) || 99.99;
+
+  const orderId = `order_${Date.now()}`;
+
+  await sendOrderConfirmationWithOnError.trigger({
+    orderId,
+    email: `${userId}@example.com`,
+    total,
+  });
+  return c.json({
+    success: true,
+    message: "Order queued with on error",
+    orderId,
+  });
 });
 
 const port = process.env.PORT || 1960;

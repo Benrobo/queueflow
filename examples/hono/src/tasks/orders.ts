@@ -39,3 +39,21 @@ export const sendOrderConfirmation = defineTask({
     console.log(`✅ Order confirmation sent to ${payload.email}`);
   },
 });
+
+// with error
+export const sendOrderConfirmationWithOnError = defineTask({
+  id: "orders.send-confirmation-with-on-error",
+  handler: async (payload: {
+    orderId: string;
+    email: string;
+    total: number;
+  }) => {
+    throw new Error("Failed to send order confirmation");
+  },
+  onError: async (error, payload) => {
+    console.error(
+      `❌ Failed to send order confirmation to ${payload.email}:`,
+      error.message
+    );
+  },
+});

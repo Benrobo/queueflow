@@ -4,7 +4,7 @@
     "": {
       "name": "queueflow-hono-example",
       "dependencies": {
-        "@benrobo/queueflow": "^0.0.2",
+        "@benrobo/queueflow": "^0.0.3",
         "hono": "^4.0.0",
       },
       "devDependencies": {
@@ -14,7 +14,7 @@
     },
   },
   "packages": {
-    "@benrobo/queueflow": ["@benrobo/queueflow@0.0.2", "", { "dependencies": { "bullmq": "^5.0.0", "ioredis": "^5.3.2" } }, "sha512-wWFoV/lCJPtqgwNOioSwvpl9/zM/y7RbBb+o+yeVWROh0/acrV5/zoJYiUF7nA98e2PSVQL4ViKlr6l7+1YCeg=="],
+    "@benrobo/queueflow": ["@benrobo/queueflow@0.0.3", "", { "dependencies": { "bullmq": "^5.0.0", "ioredis": "^5.3.2" } }, "sha512-7MlO2kOTq0v7dUl8UAGWgn/WIuE6eDEIuQ0+n814OMYX67lTdJlylStQGMC/WPgT7LoRs4RzsMnPOz7zUwud0g=="],
 
     "@ioredis/commands": ["@ioredis/commands@1.4.0", "", {}, "sha512-aFT2yemJJo+TZCmieA7qnYGQooOS7QfNmYrzGtsYd3g9j5iDP8AimYYAesf79ohjbLG12XxC4nG5DyEnC88AsQ=="],
 
