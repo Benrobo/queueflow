@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { configure } from "@benrobo/queueflow";
+import { configure, scheduleTask } from "@benrobo/queueflow";
 import "./tasks/email";
 import "./tasks/orders";
 import "./tasks/scheduled";

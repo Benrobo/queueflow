@@ -37,3 +37,10 @@ export const weeklyBackup = scheduleTask({
   },
 });
 
+export const dailyReport5Seconds = scheduleTask({
+  id: "reports.daily5seconds",
+  cron: "*/5 * * * * *", // Every 5 seconds
+  run: async () => {
+    console.log("Generating report... 5 seconds");
+  },
+});

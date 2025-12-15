@@ -76,13 +76,9 @@ class GlobalWorker {
       }
     );
 
-    worker.on("completed", (job) => {
-      console.log(`✅ ${job.name} completed`);
-    });
+    worker.on("completed", (job) => {});
 
     worker.on("failed", async (job, err) => {
-      console.error(`❌ ${job?.name} failed:`, err.message);
-
       if (job) {
         const errorHandler = this.errorHandlers.get(job.name);
         if (errorHandler) {

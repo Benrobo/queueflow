@@ -7,7 +7,7 @@
     "start": "bun run src/index.ts"
   },
   "dependencies": {
-    "@benrobo/queueflow": "^0.0.4",
+    "@benrobo/queueflow": "^0.0.5",
     "hono": "^4.0.0"
   },
   "devDependencies": {
