@@ -27,16 +27,21 @@ export function getConfig(): RedisConfig {
 }
 
 export function createRedisConnection(): Redis {
-  const config = getConfig();
+  try {
+    const config = getConfig();
 
-  if (typeof config.connection === "string") {
-    return new Redis(config.connection);
+    if (typeof config.connection === "string") {
+      return new Redis(config.connection);
+    }
+
+    return new Redis({
+      host: "localhost",
+      port: 6379,
+      maxRetriesPerRequest: null,
+      ...config.connection,
+    });
+  } catch (error) {
+    console.error("Error creating Redis connection:", error);
+    throw new Error("Failed to create Redis connection");
   }
-
-  return new Redis({
-    host: "localhost",
-    port: 6379,
-    maxRetriesPerRequest: null,
-    ...config.connection,
-  });
 }
