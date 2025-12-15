@@ -4,7 +4,7 @@
     "": {
       "name": "queueflow-hono-example",
       "dependencies": {
-        "@benrobo/queueflow": "^0.0.3",
+        "@benrobo/queueflow": "^0.0.4",
         "hono": "^4.0.0",
       },
       "devDependencies": {
@@ -14,7 +14,7 @@
     },
   },
   "packages": {
-    "@benrobo/queueflow": ["@benrobo/queueflow@0.0.3", "", { "dependencies": { "bullmq": "^5.0.0", "ioredis": "^5.3.2" } }, "sha512-7MlO2kOTq0v7dUl8UAGWgn/WIuE6eDEIuQ0+n814OMYX67lTdJlylStQGMC/WPgT7LoRs4RzsMnPOz7zUwud0g=="],
+    "@benrobo/queueflow": ["@benrobo/queueflow@0.0.4", "", { "dependencies": { "@benrobo/queueflow": "^0.0.3", "bullmq": "^5.0.0", "ioredis": "^5.3.2" } }, "sha512-m2tZ44NuyiKHabaOzVvLHSwc6FhjUJjsBYicRPq8t227dX9luh9LFwoENKuajIaOI3jT3ERdRY+dmXrDlwi3cw=="],
 
     "@ioredis/commands": ["@ioredis/commands@1.4.0", "", {}, "sha512-aFT2yemJJo+TZCmieA7qnYGQooOS7QfNmYrzGtsYd3g9j5iDP8AimYYAesf79ohjbLG12XxC4nG5DyEnC88AsQ=="],
 
@@ -79,5 +79,7 @@
     "undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
     "uuid": ["uuid@11.1.0", "", { "bin": { "uuid": "dist/esm/bin/uuid" } }, "sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A=="],
+
+    "@benrobo/queueflow/@benrobo/queueflow": ["@benrobo/queueflow@0.0.3", "", { "dependencies": { "bullmq": "^5.0.0", "ioredis": "^5.3.2" } }, "sha512-7MlO2kOTq0v7dUl8UAGWgn/WIuE6eDEIuQ0+n814OMYX67lTdJlylStQGMC/WPgT7LoRs4RzsMnPOz7zUwud0g=="],
   }
 }
