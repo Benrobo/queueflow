@@ -7,14 +7,25 @@ interface TaskConfig<T> {
   id: string;
   queue?: string;
   retry?: number;
-  handler: (payload: T) => Promise<void>;
+  run: (payload: T) => Promise<void>;
   onError?: (error: Error, payload: T) => Promise<void> | void;
+  concurrency?: number;
+}
+
+interface ScheduleTaskConfig<T> {
+  id: string;
+  cron: string;
+  queue?: string;
+  run: (payload: T) => Promise<void>;
+  onError?: (error: Error, payload: T) => Promise<void> | void;
+  tz?: string;
+  concurrency?: number;
 }
 
 export class Task<T = any> {
   public readonly id: string;
   public readonly queue: string;
-  private readonly handler: (payload: T) => Promise<void>;
+  private readonly run: (payload: T) => Promise<void>;
   private readonly onError?: (error: Error, payload: T) => Promise<void> | void;
   private queueInstance: Queue | null = null;
 
@@ -23,11 +34,17 @@ export class Task<T = any> {
     this.queue =
       config.queue || config.id.split(".")[0] || getConfig().defaultQueue!;
 
-    this.handler = config.handler;
+    this.run = config.run;
     this.onError = config.onError;
 
     const globalWorker = GlobalWorker.getInstance();
-    globalWorker.registerTask(this.id, this.queue, this.handler, this.onError);
+    globalWorker.registerTask(
+      this.id,
+      this.queue,
+      this.run,
+      this.onError,
+      config.concurrency
+    );
   }
 
   async trigger(payload: T, options?: JobsOptions): Promise<void> {
@@ -47,4 +64,56 @@ export class Task<T = any> {
   }
 }
 
-export type { TaskConfig };
+export class ScheduledTask<T = any> {
+  public readonly id: string;
+  public readonly queue: string;
+  private readonly run: (payload: T) => Promise<void>;
+  private readonly onError?: (error: Error, payload: T) => Promise<void> | void;
+  private readonly cron: string;
+  private readonly tz?: string;
+  private queueInstance: Queue | null = null;
+
+  constructor(config: ScheduleTaskConfig<T>) {
+    this.id = config.id;
+    this.queue =
+      config.queue || config.id.split(".")[0] || getConfig().defaultQueue!;
+    this.run = config.run;
+    this.onError = config.onError;
+    this.cron = config.cron;
+    this.tz = config.tz;
+
+    const globalWorker = GlobalWorker.getInstance();
+    globalWorker.registerTask(
+      this.id,
+      this.queue,
+      this.run,
+      this.onError,
+      config.concurrency
+    );
+
+    this.schedule();
+  }
+
+  private async schedule(): Promise<void> {
+    if (!this.queueInstance) {
+      const redis = createRedisConnection();
+      this.queueInstance = new Queue(this.queue, { connection: redis });
+    }
+
+    ensureWorkerStarted();
+
+    await this.queueInstance.add(
+      this.id,
+      {},
+      {
+        repeat: {
+          pattern: this.cron,
+          tz: this.tz,
+        },
+        jobId: this.id,
+      }
+    );
+  }
+}
+
+export type { TaskConfig, ScheduleTaskConfig };

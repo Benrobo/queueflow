@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { configure } from "@benrobo/queueflow";
 import "./tasks/email";
 import "./tasks/orders";
+import "./tasks/scheduled";
 import { sendWelcomeEmail, sendPasswordReset } from "./tasks/email";
 import {
   processOrder,
@@ -19,7 +20,17 @@ const app = new Hono();
 app.get("/", (c) => {
   return c.json({
     message: "Queueflow Hono.js Example",
-    endpoints: ["GET /signup", "GET /reset-password", "GET /order"],
+    endpoints: [
+      "GET /signup",
+      "GET /reset-password",
+      "GET /order",
+      "GET /order-with-on-error",
+    ],
+    scheduled: [
+      "Daily report: 9:00 AM daily",
+      "Hourly cleanup: Every hour",
+      "Weekly backup: Sunday 2:00 AM EST",
+    ],
   });
 });
 

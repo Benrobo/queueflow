@@ -1,9 +1,15 @@
-import { Task, TaskConfig } from "./task";
+import { Task, TaskConfig, ScheduledTask, ScheduleTaskConfig } from "./task";
 import { configure } from "./config";
 import { GlobalWorker } from "./worker";
 
 export function defineTask<T>(config: TaskConfig<T>): Task<T> {
   return new Task<T>(config);
+}
+
+export function scheduleTask<T>(
+  config: ScheduleTaskConfig<T>
+): ScheduledTask<T> {
+  return new ScheduledTask<T>(config);
 }
 
 export function startWorker(): void {
@@ -12,5 +18,10 @@ export function startWorker(): void {
 }
 
 export { configure };
-export type { Task, TaskConfig } from "./task";
+export type {
+  Task,
+  TaskConfig,
+  ScheduledTask,
+  ScheduleTaskConfig,
+} from "./task";
 export type { RedisConfig } from "./config";

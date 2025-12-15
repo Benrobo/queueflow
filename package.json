@@ -1,6 +1,6 @@
 {
   "name": "@benrobo/queueflow",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A simple, type-safe task queue library built on BullMQ",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

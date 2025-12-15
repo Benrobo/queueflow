@@ -2,7 +2,7 @@ import { defineTask } from "@benrobo/queueflow";
 
 export const processOrder = defineTask({
   id: "orders.process",
-  handler: async (payload: {
+  run: async (payload: {
     orderId: string;
     userId: string;
     items: string[];
@@ -28,11 +28,7 @@ export const processOrder = defineTask({
 
 export const sendOrderConfirmation = defineTask({
   id: "orders.send-confirmation",
-  handler: async (payload: {
-    orderId: string;
-    email: string;
-    total: number;
-  }) => {
+  run: async (payload: { orderId: string; email: string; total: number }) => {
     console.log(`📧 Sending order confirmation to ${payload.email}`);
     console.log(`📋 Order ID: ${payload.orderId}, Total: $${payload.total}`);
     await new Promise((resolve) => setTimeout(resolve, 800));
@@ -43,11 +39,7 @@ export const sendOrderConfirmation = defineTask({
 // with error
 export const sendOrderConfirmationWithOnError = defineTask({
   id: "orders.send-confirmation-with-on-error",
-  handler: async (payload: {
-    orderId: string;
-    email: string;
-    total: number;
-  }) => {
+  run: async (payload: { orderId: string; email: string; total: number }) => {
     throw new Error("Failed to send order confirmation");
   },
   onError: async (error, payload) => {

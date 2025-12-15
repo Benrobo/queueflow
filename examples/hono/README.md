@@ -158,15 +158,16 @@ src/
   ├── index.ts          # Hono.js app with API routes
   └── tasks/
       ├── email.ts      # Email-related tasks
-      └── orders.ts     # Order processing tasks with error handling examples
+      ├── orders.ts     # Order processing tasks with error handling examples
+      └── scheduled.ts  # Scheduled tasks (cron jobs)
 ```
 
 ## How It Works
 
-1. Tasks are defined in the `tasks/` directory using `defineTask()`
+1. Tasks are defined in the `tasks/` directory using `defineTask()` or `scheduleTask()`
 2. Tasks are imported in `index.ts` to register them with the worker
 3. Redis is configured once at app startup
-4. API routes trigger tasks using `.trigger()`
+4. API routes trigger tasks using `.trigger()` (or tasks run automatically if scheduled)
 5. The worker automatically processes tasks in the background
 6. Error handlers (if defined) are called when tasks fail
 

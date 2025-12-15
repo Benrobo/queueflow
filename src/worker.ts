@@ -25,13 +25,14 @@ class GlobalWorker {
     taskId: string,
     queue: string,
     handler: Function,
-    onError?: Function
+    onError?: Function,
+    concurrency?: number
   ): void {
     this.taskHandlers.set(taskId, handler);
     this.errorHandlers.set(taskId, onError);
 
     if (!this.workers.has(queue) && this.isStarted) {
-      this.createQueueWorker(queue);
+      this.createQueueWorker(queue, concurrency);
     }
   }
 
@@ -51,7 +52,7 @@ class GlobalWorker {
     console.log(`🚀 Worker started listening for tasks`);
   }
 
-  private createQueueWorker(queueName: string): void {
+  private createQueueWorker(queueName: string, concurrency?: number): void {
     const worker = new Worker(
       queueName,
       async (job) => {
@@ -63,7 +64,7 @@ class GlobalWorker {
       },
       {
         connection: this.redis,
-        concurrency: 5,
+        concurrency: concurrency || 5,
         removeOnComplete: {
           age: 100,
           count: 100,

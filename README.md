@@ -41,7 +41,7 @@ import { defineTask } from "@benrobo/queueflow";
 
 export const sendWelcomeEmail = defineTask({
   id: "email.welcome",
-  handler: async (payload: { userId: string; email: string }) => {
+  run: async (payload: { userId: string; email: string }) => {
     console.log(`Sending welcome email to ${payload.email}`);
     // Your email sending logic here
   },
@@ -107,7 +107,7 @@ Queueflow is built with TypeScript from the ground up. Your payload types flow t
 ```typescript
 const processOrder = defineTask({
   id: "orders.process",
-  handler: async (payload: { orderId: string; amount: number }) => {
+  run: async (payload: { orderId: string; amount: number }) => {
     // payload is fully typed here
     console.log(`Processing order ${payload.orderId}`);
   },
@@ -134,7 +134,6 @@ await sendWelcomeEmail.trigger(
 You can pass any BullMQ job options through the second parameter, including:
 
 - `delay` - milliseconds to wait before processing
-- `repeat` - cron pattern for recurring jobs
 - `attempts` - number of retry attempts
 - `backoff` - retry strategy
 
@@ -145,7 +144,7 @@ Handle errors gracefully with the `onError` callback:
 ```typescript
 const sendEmail = defineTask({
   id: "email.send",
-  handler: async (payload: { email: string; subject: string }) => {
+  run: async (payload: { email: string; subject: string }) => {
     await sendEmailToUser(payload.email, payload.subject);
   },
   onError: async (error, payload) => {
@@ -157,6 +156,46 @@ const sendEmail = defineTask({
 
 The `onError` callback receives both the error and the original payload, so you can handle failures appropriately (log to an error service, send notifications, etc.).
 
+### Scheduled Tasks (Cron Jobs)
+
+For recurring tasks that run on a schedule, use `scheduleTask`:
+
+```typescript
+import { scheduleTask } from "@benrobo/queueflow";
+
+const dailyReport = scheduleTask({
+  id: "reports.daily",
+  cron: "0 9 * * *",
+  run: async () => {
+    console.log("Generating daily report...");
+    await generateReport();
+  },
+  onError: async (error) => {
+    console.error("Failed to generate report:", error.message);
+  },
+});
+```
+
+The task will automatically run based on the cron pattern. Common cron patterns:
+
+- `"0 9 * * *"` - Every day at 9:00 AM
+- `"0 * * * *"` - Every hour
+- `"0 0 * * 0"` - Every Sunday at midnight
+- `"*/5 * * * *"` - Every 5 minutes
+
+You can also specify a timezone:
+
+```typescript
+const weeklyBackup = scheduleTask({
+  id: "backup.weekly",
+  cron: "0 2 * * 0",
+  tz: "America/New_York",
+  run: async () => {
+    await performBackup();
+  },
+});
+```
+
 ### Custom Queues
 
 By default, tasks are grouped by the prefix of their ID (e.g., `email.welcome` goes to the `email` queue). You can override this:
@@ -165,8 +204,22 @@ By default, tasks are grouped by the prefix of their ID (e.g., `email.welcome` g
 const heavyTask = defineTask({
   id: "processing.heavy",
   queue: "heavy-processing", // Custom queue name
-  handler: async (payload) => {
+  run: async (payload) => {
     // This runs in the "heavy-processing" queue
+  },
+});
+```
+
+### Concurrency Control
+
+Control how many tasks run simultaneously per queue:
+
+```typescript
+const highVolumeTask = defineTask({
+  id: "processing.high-volume",
+  concurrency: 10,
+  run: async (payload) => {
+    // This queue can process up to 10 tasks concurrently
   },
 });
 ```
@@ -193,7 +246,7 @@ import { defineTask } from "@benrobo/queueflow";
 
 export const sendWelcomeEmail = defineTask({
   id: "email.welcome",
-  handler: async (payload: { userId: string; email: string }) => {
+  run: async (payload: { userId: string; email: string }) => {
     await sendEmail({
       to: payload.email,
       subject: "Welcome!",
@@ -204,7 +257,7 @@ export const sendWelcomeEmail = defineTask({
 
 export const sendPasswordReset = defineTask({
   id: "email.password-reset",
-  handler: async (payload: { email: string; token: string }) => {
+  run: async (payload: { email: string; token: string }) => {
     await sendEmail({
       to: payload.email,
       subject: "Reset your password",
@@ -220,7 +273,7 @@ import { defineTask } from "@benrobo/queueflow";
 
 export const processOrder = defineTask({
   id: "orders.process",
-  handler: async (payload: { orderId: string; items: string[] }) => {
+  run: async (payload: { orderId: string; items: string[] }) => {
     // Process the order
     await chargePayment(payload.orderId);
     await updateInventory(payload.items);
@@ -258,7 +311,7 @@ app.post("/signup", async (req, res) => {
 
 ### `defineTask<T>(config)`
 
-Creates a new task definition.
+Creates a new task definition for manual triggering.
 
 **Parameters:**
 
@@ -266,8 +319,27 @@ Creates a new task definition.
 - `config.queue` (string, optional) - Queue name (defaults to prefix of `id`)
 - `config.handler` (function) - Async function that processes the task payload
 - `config.onError` (function, optional) - Error handler callback `(error: Error, payload: T) => Promise<void> | void`
+- `config.concurrency` (number, optional) - Number of concurrent tasks for this queue (defaults to 5)
 
 **Returns:** `Task<T>` instance
+
+### `scheduleTask<T>(config)`
+
+Creates a scheduled task that runs automatically based on a cron pattern.
+
+**Parameters:**
+
+- `config.id` (string) - Unique identifier for the task (e.g., `"reports.daily"`)
+- `config.cron` (string) - Cron pattern (e.g., `"0 9 * * *"` for daily at 9 AM)
+- `config.queue` (string, optional) - Queue name (defaults to prefix of `id`)
+- `config.handler` (function) - Async function that processes the task
+- `config.onError` (function, optional) - Error handler callback `(error: Error, payload: T) => Promise<void> | void`
+- `config.tz` (string, optional) - Timezone (e.g., `"America/New_York"`)
+- `config.concurrency` (number, optional) - Number of concurrent tasks for this queue (defaults to 5)
+
+**Returns:** `ScheduledTask<T>` instance
+
+**Note:** Scheduled tasks start automatically when the worker starts. No need to call `.trigger()`.
 
 ### `Task.trigger(payload, options?)`
 
@@ -276,7 +348,7 @@ Triggers a task to run. Options are optional and can be used for delayed jobs, r
 **Parameters:**
 
 - `payload` (T) - The typed payload for the task
-- `options` (JobsOptions, optional) - BullMQ job options (delay, repeat, attempts, etc.)
+- `options` (JobsOptions, optional) - BullMQ job options (delay, attempts, backoff, etc.)
 
 **Returns:** `Promise<void>`
 
