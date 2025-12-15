@@ -9,6 +9,9 @@ export const sendWelcomeEmail = defineTask({
     await new Promise((resolve) => setTimeout(resolve, 1000));
     console.log(`✅ Welcome email sent to ${payload.email}`);
   },
+  onError: async (error, payload) => {
+    console.error(`❌ Failed to send welcome email to ${payload.email}:`, error.message);
+  },
 });
 
 export const sendPasswordReset = defineTask({

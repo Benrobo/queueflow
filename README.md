@@ -138,6 +138,25 @@ You can pass any BullMQ job options through the second parameter, including:
 - `attempts` - number of retry attempts
 - `backoff` - retry strategy
 
+### Error Handling
+
+Handle errors gracefully with the `onError` callback:
+
+```typescript
+const sendEmail = defineTask({
+  id: "email.send",
+  handler: async (payload: { email: string; subject: string }) => {
+    await sendEmailToUser(payload.email, payload.subject);
+  },
+  onError: async (error, payload) => {
+    console.error(`Failed to send email to ${payload.email}:`, error.message);
+    await logErrorToService(error, payload);
+  },
+});
+```
+
+The `onError` callback receives both the error and the original payload, so you can handle failures appropriately (log to an error service, send notifications, etc.).
+
 ### Custom Queues
 
 By default, tasks are grouped by the prefix of their ID (e.g., `email.welcome` goes to the `email` queue). You can override this:
@@ -246,6 +265,7 @@ Creates a new task definition.
 - `config.id` (string) - Unique identifier for the task (e.g., `"email.welcome"`)
 - `config.queue` (string, optional) - Queue name (defaults to prefix of `id`)
 - `config.handler` (function) - Async function that processes the task payload
+- `config.onError` (function, optional) - Error handler callback `(error: Error, payload: T) => Promise<void> | void`
 
 **Returns:** `Task<T>` instance
 

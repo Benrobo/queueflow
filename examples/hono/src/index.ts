@@ -15,111 +15,48 @@ const app = new Hono();
 app.get("/", (c) => {
   return c.json({
     message: "Queueflow Hono.js Example",
-    endpoints: {
-      "POST /signup": "Create a user and send welcome email",
-      "POST /reset-password": "Send password reset email",
-      "POST /order": "Process an order",
-      "GET /health": "Health check",
-    },
+    endpoints: ["GET /signup", "GET /reset-password", "GET /order"],
   });
 });
 
-app.get("/health", (c) => {
-  return c.json({ status: "ok", timestamp: new Date().toISOString() });
+app.get("/signup", async (c) => {
+  const email = c.req.query("email") || "user@example.com";
+  const name = c.req.query("name") || "User";
+
+  await sendWelcomeEmail.trigger({
+    userId: `user_${Date.now()}`,
+    email,
+    name,
+  });
+
+  return c.json({ success: true, message: "Welcome email queued" });
 });
 
-app.post("/signup", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { email, name } = body;
+app.get("/reset-password", async (c) => {
+  const email = c.req.query("email") || "user@example.com";
 
-    if (!email || !name) {
-      return c.json({ error: "Email and name are required" }, 400);
-    }
+  await sendPasswordReset.trigger({
+    email,
+    token: Math.random().toString(36).slice(2, 15),
+  });
 
-    const userId = `user_${Date.now()}`;
-
-    await sendWelcomeEmail.trigger({
-      userId,
-      email,
-      name,
-    });
-
-    return c.json({
-      success: true,
-      message: "User created, welcome email queued",
-      userId,
-    });
-  } catch (error) {
-    return c.json({ error: "Failed to process signup" }, 500);
-  }
+  return c.json({ success: true, message: "Password reset email queued" });
 });
 
-app.post("/reset-password", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { email } = body;
+app.get("/order", async (c) => {
+  const userId = c.req.query("userId") || "user_123";
+  const items = c.req.query("items")?.split(",") || ["item1", "item2"];
+  const total = Number(c.req.query("total")) || 99.99;
 
-    if (!email) {
-      return c.json({ error: "Email is required" }, 400);
-    }
+  const orderId = `order_${Date.now()}`;
 
-    const token = Math.random().toString(36).slice(2, 15);
+  await processOrder.trigger({ orderId, userId, items, total });
+  await sendOrderConfirmation.trigger(
+    { orderId, email: `${userId}@example.com`, total },
+    { delay: 3000 }
+  );
 
-    await sendPasswordReset.trigger({
-      email,
-      token,
-    });
-
-    return c.json({
-      success: true,
-      message: "Password reset email queued",
-    });
-  } catch (error) {
-    return c.json({ error: "Failed to process password reset" }, 500);
-  }
-});
-
-app.post("/order", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { userId, items, total } = body;
-
-    if (!userId || !items || !Array.isArray(items) || !total) {
-      return c.json(
-        { error: "userId, items (array), and total are required" },
-        400
-      );
-    }
-
-    const orderId = `order_${Date.now()}`;
-
-    await processOrder.trigger({
-      orderId,
-      userId,
-      items,
-      total,
-    });
-
-    await sendOrderConfirmation.trigger(
-      {
-        orderId,
-        email: `${userId}@example.com`,
-        total,
-      },
-      {
-        delay: 10000,
-      }
-    );
-
-    return c.json({
-      success: true,
-      message: "Order queued for processing",
-      orderId,
-    });
-  } catch (error) {
-    return c.json({ error: "Failed to process order" }, 500);
-  }
+  return c.json({ success: true, message: "Order queued", orderId });
 });
 
 const port = process.env.PORT || 1960;
