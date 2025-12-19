@@ -81,7 +81,9 @@ export function createRedisConnection(): Redis {
     const config = getConfig();
 
     if (typeof config.connection === "string") {
-      return new Redis(config.connection);
+      return new Redis(config.connection, {
+        maxRetriesPerRequest: null,
+      });
     }
 
     return new Redis({
