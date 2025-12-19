@@ -85,6 +85,15 @@ await configure({
 });
 ```
 
+Enable debug logging to see detailed information about task registration, triggering, and processing:
+
+```typescript
+await configure({
+  connection: process.env.REDIS_URL,
+  debug: true, // Enable debug logs
+});
+```
+
 ### 3. Trigger Your Task
 
 ```typescript
@@ -326,7 +335,7 @@ Creates a new task definition for manual triggering.
 **Parameters:**
 
 - `config.id` (string) - Unique identifier for the task (e.g., `"email.welcome"`)
-- `config.queue` (string, optional) - Queue name (defaults to prefix of `id`)
+- `config.queue` (string, optional) - Queue name (defaults to `defaultQueue` from config)
 - `config.handler` (function) - Async function that processes the task payload
 - `config.onError` (function, optional) - Error handler callback `(error: Error, payload: T) => Promise<void> | void`
 - `config.concurrency` (number, optional) - Number of concurrent tasks for this queue (defaults to 5)
@@ -341,7 +350,7 @@ Creates a scheduled task that runs automatically based on a cron pattern.
 
 - `config.id` (string) - Unique identifier for the task (e.g., `"reports.daily"`)
 - `config.cron` (string) - Cron pattern (e.g., `"0 9 * * *"` for daily at 9 AM)
-- `config.queue` (string, optional) - Queue name (defaults to prefix of `id`)
+- `config.queue` (string, optional) - Queue name (defaults to `defaultQueue` from config)
 - `config.handler` (function) - Async function that processes the task
 - `config.onError` (function, optional) - Error handler callback `(error: Error, payload: T) => Promise<void> | void`
 - `config.tz` (string, optional) - Timezone (e.g., `"America/New_York"`)
@@ -370,12 +379,14 @@ Configures the Redis connection and default settings. Validates the Redis connec
 
 - `config.connection` (string | object, optional) - Redis connection string or config object
 - `config.defaultQueue` (string, optional) - Default queue name (defaults to `"default"`)
+- `config.debug` (boolean, optional) - Enable debug logging (defaults to `false`)
 
 **Returns:** `Promise<void>`
 
 **Throws:** `Error` if Redis connection cannot be established
 
 **Example:**
+
 ```typescript
 // With await
 await configure({
@@ -389,6 +400,12 @@ configure({
 }).catch((error) => {
   console.error("Configuration failed:", error);
   process.exit(1);
+});
+
+// With debug logging enabled
+await configure({
+  connection: process.env.REDIS_URL,
+  debug: true,
 });
 ```
 

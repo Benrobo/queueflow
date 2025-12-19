@@ -1,12 +1,13 @@
 import { Worker } from "bullmq";
 import Redis from "ioredis";
-import { createRedisConnection } from "./config";
+import { createRedisConnection, isDebugEnabled } from "./config";
 
 class GlobalWorker {
   private static instance: GlobalWorker;
   private workers: Map<string, Worker> = new Map();
   public taskHandlers: Map<string, Function> = new Map();
   private errorHandlers: Map<string, Function | undefined> = new Map();
+  private taskQueues: Map<string, string> = new Map();
   private redis: Redis;
   public isStarted = false;
 
@@ -30,6 +31,7 @@ class GlobalWorker {
   ): void {
     this.taskHandlers.set(taskId, handler);
     this.errorHandlers.set(taskId, onError);
+    this.taskQueues.set(taskId, queue);
 
     if (!this.workers.has(queue) && this.isStarted) {
       this.createQueueWorker(queue, concurrency);
@@ -39,62 +41,72 @@ class GlobalWorker {
   async start(): Promise<void> {
     if (this.isStarted) return;
 
-    const queues = new Set<string>();
-    for (const [taskId] of this.taskHandlers) {
-      const queue = taskId.includes(".") ? taskId.split(".")[0] : "default";
-      queues.add(queue);
-    }
+    const queues = new Set(this.taskQueues.values());
 
     for (const queue of queues) {
       this.createQueueWorker(queue);
     }
+
     this.isStarted = true;
-    console.log(`🚀 Worker started listening for tasks`);
+    console.log(
+      `🚀 Worker started listening for tasks on queues: ${Array.from(
+        queues
+      ).join(", ")}`
+    );
   }
 
   private createQueueWorker(queueName: string, concurrency?: number): void {
     const worker = new Worker(
       queueName,
       async (job) => {
-        const handler = this.taskHandlers.get(job.name);
-        if (!handler) {
-          throw new Error(`No handler for task: ${job.name}`);
-        }
-        await handler(job.data);
+        await this.processJob(job.name, job.data);
       },
       {
         connection: this.redis,
         concurrency: concurrency || 5,
-        removeOnComplete: {
-          age: 100,
-          count: 100,
-        },
-        removeOnFail: {
-          age: 500,
-          count: 500,
-        },
+        removeOnComplete: { age: 100, count: 100 },
+        removeOnFail: { age: 500, count: 500 },
       }
     );
 
-    worker.on("completed", (job) => {});
-
     worker.on("failed", async (job, err) => {
       if (job) {
-        const errorHandler = this.errorHandlers.get(job.name);
-        if (errorHandler) {
-          try {
-            await errorHandler(err, job.data);
-          } catch (handlerError) {
-            console.error(
-              `Error in onError handler for ${job.name}:`,
-              handlerError
-            );
-          }
-        }
+        await this.handleJobFailure(job.name, err, job.data);
       }
     });
 
     this.workers.set(queueName, worker);
+  }
+
+  private async processJob(taskId: string, data: any): Promise<void> {
+    const handler = this.taskHandlers.get(taskId);
+    if (!handler) {
+      console.error(`No handler found for task: ${taskId}`);
+      if (isDebugEnabled()) {
+        console.error(
+          `Available handlers:`,
+          Array.from(this.taskHandlers.keys())
+        );
+      }
+      throw new Error(`No handler for task: ${taskId}`);
+    }
+
+    await handler(data);
+  }
+
+  private async handleJobFailure(
+    taskId: string,
+    error: Error,
+    data: any
+  ): Promise<void> {
+    const errorHandler = this.errorHandlers.get(taskId);
+    if (errorHandler) {
+      try {
+        await errorHandler(error, data);
+      } catch (handlerError) {
+        console.error(`Error in onError handler for ${taskId}:`, handlerError);
+      }
+    }
   }
 
   async stop(): Promise<void> {

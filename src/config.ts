@@ -23,10 +23,13 @@ export interface RedisConfig {
       };
   /** Default queue name for tasks that don't specify a queue (defaults to "default") */
   defaultQueue?: string;
+  /** Enable debug logging (defaults to false) */
+  debug?: boolean;
 }
 
 let globalConfig: RedisConfig = {
   defaultQueue: "default",
+  debug: false,
 };
 
 /**
@@ -60,6 +63,12 @@ let globalConfig: RedisConfig = {
  * }).catch((error) => {
  *   console.error("Failed to configure Queueflow:", error);
  *   process.exit(1);
+ * });
+ *
+ * // Enable debug logging
+ * configure({
+ *   connection: process.env.REDIS_URL,
+ *   debug: true,
  * });
  * ```
  */
@@ -98,6 +107,16 @@ export async function configure(config: RedisConfig): Promise<void> {
  */
 export function getConfig(): RedisConfig {
   return globalConfig;
+}
+
+/**
+ * Checks if debug mode is enabled.
+ *
+ * @returns True if debug logging is enabled
+ * @internal
+ */
+export function isDebugEnabled(): boolean {
+  return globalConfig.debug === true;
 }
 
 /**

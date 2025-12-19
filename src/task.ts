@@ -3,6 +3,10 @@ import { createRedisConnection, getConfig } from "./config";
 import { ensureWorkerStarted } from "./worker";
 import { GlobalWorker } from "./worker";
 
+function resolveQueueName(id: string, explicitQueue?: string): string {
+  return explicitQueue || id;
+}
+
 /**
  * Configuration for defining a task that can be manually triggered.
  *
@@ -11,7 +15,7 @@ import { GlobalWorker } from "./worker";
 interface TaskConfig<T> {
   /** Unique identifier for the task (e.g., "email.welcome") */
   id: string;
-  /** Optional queue name (defaults to prefix of id) */
+  /** Optional queue name (defaults to defaultQueue from config) */
   queue?: string;
   /** Optional number of retry attempts */
   retry?: number;
@@ -33,7 +37,7 @@ interface ScheduleTaskConfig<T> {
   id: string;
   /** Cron pattern for scheduling (e.g., "0 9 * * *" for daily at 9 AM) */
   cron: string;
-  /** Optional queue name (defaults to prefix of id) */
+  /** Optional queue name (defaults to defaultQueue from config) */
   queue?: string;
   /** Async function that processes the task */
   run: (payload: T) => Promise<void>;
@@ -66,14 +70,11 @@ export class Task<T = any> {
    */
   constructor(config: TaskConfig<T>) {
     this.id = config.id;
-    this.queue =
-      config.queue || config.id.split(".")[0] || getConfig().defaultQueue!;
-
+    this.queue = resolveQueueName(config.id, config.queue);
     this.run = config.run;
     this.onError = config.onError;
 
-    const globalWorker = GlobalWorker.getInstance();
-    globalWorker.registerTask(
+    GlobalWorker.getInstance().registerTask(
       this.id,
       this.queue,
       this.run,
@@ -101,11 +102,7 @@ export class Task<T = any> {
    * ```
    */
   async trigger(payload: T, options?: JobsOptions): Promise<void> {
-    if (!this.queueInstance) {
-      const redis = createRedisConnection();
-      this.queueInstance = new Queue(this.queue, { connection: redis });
-    }
-
+    this.ensureQueueInstance();
     ensureWorkerStarted();
 
     const jobOptions: JobsOptions = {
@@ -113,7 +110,14 @@ export class Task<T = any> {
       ...options,
     };
 
-    await this.queueInstance.add(this.id, payload, jobOptions);
+    await this.queueInstance!.add(this.id, payload, jobOptions);
+  }
+
+  private ensureQueueInstance(): void {
+    if (!this.queueInstance) {
+      const redis = createRedisConnection();
+      this.queueInstance = new Queue(this.queue, { connection: redis });
+    }
   }
 }
 
@@ -141,15 +145,13 @@ export class ScheduledTask<T = any> {
    */
   constructor(config: ScheduleTaskConfig<T>) {
     this.id = config.id;
-    this.queue =
-      config.queue || config.id.split(".")[0] || getConfig().defaultQueue!;
+    this.queue = resolveQueueName(config.id, config.queue);
     this.run = config.run;
     this.onError = config.onError;
     this.cron = config.cron;
     this.tz = config.tz;
 
-    const globalWorker = GlobalWorker.getInstance();
-    globalWorker.registerTask(
+    GlobalWorker.getInstance().registerTask(
       this.id,
       this.queue,
       this.run,
@@ -161,32 +163,40 @@ export class ScheduledTask<T = any> {
   }
 
   private async schedule(): Promise<void> {
+    this.ensureQueueInstance();
+    ensureWorkerStarted();
+
+    await this.removeExistingSchedule();
+    await this.addScheduledJob();
+  }
+
+  private ensureQueueInstance(): void {
     if (!this.queueInstance) {
       const redis = createRedisConnection();
       this.queueInstance = new Queue(this.queue, { connection: redis });
     }
+  }
 
-    ensureWorkerStarted();
-
-    const repeatOpts = {
-      pattern: this.cron,
-      tz: this.tz,
-    };
-
-    const repeatableJobs = await this.queueInstance.getRepeatableJobs();
+  private async removeExistingSchedule(): Promise<void> {
+    const repeatableJobs = await this.queueInstance!.getRepeatableJobs();
     const existingJob = repeatableJobs.find(
       (job) => job.id === this.id || job.name === this.id
     );
 
     if (existingJob) {
-      await this.queueInstance.removeJobScheduler(existingJob.key);
+      await this.queueInstance!.removeJobScheduler(existingJob.key);
     }
+  }
 
-    await this.queueInstance.add(
+  private async addScheduledJob(): Promise<void> {
+    await this.queueInstance!.add(
       this.id,
       {},
       {
-        repeat: repeatOpts,
+        repeat: {
+          pattern: this.cron,
+          tz: this.tz,
+        },
         jobId: this.id,
       }
     );
