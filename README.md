@@ -50,22 +50,32 @@ export const sendWelcomeEmail = defineTask({
 
 ### 2. Configure Redis (Optional)
 
-If you're using a local Redis instance on the default port, you can skip this step. Otherwise, configure it once at your app's entry point:
+If you're using a local Redis instance on the default port, you can skip this step. Otherwise, configure it once at your app's entry point. The `configure()` function validates the Redis connection immediately and will throw an error if the connection fails:
 
 ```typescript
 // app.ts or index.ts
 import { configure } from "@benrobo/queueflow";
 
+// Using await (recommended)
+await configure({
+  connection: process.env.REDIS_URL || "redis://localhost:6379",
+  defaultQueue: "myapp",
+});
+
+// Or with error handling using .catch()
 configure({
   connection: process.env.REDIS_URL || "redis://localhost:6379",
   defaultQueue: "myapp",
+}).catch((error) => {
+  console.error("Failed to configure Queueflow:", error);
+  process.exit(1);
 });
 ```
 
 You can use either a connection string or an object:
 
 ```typescript
-configure({
+await configure({
   connection: {
     host: "localhost",
     port: 6379,
@@ -288,7 +298,7 @@ import { configure } from "@benrobo/queueflow";
 import "./tasks/email";
 import "./tasks/orders";
 
-configure({
+await configure({
   connection: process.env.REDIS_URL,
 });
 
@@ -354,12 +364,33 @@ Triggers a task to run. Options are optional and can be used for delayed jobs, r
 
 ### `configure(config)`
 
-Configures the Redis connection and default settings.
+Configures the Redis connection and default settings. Validates the Redis connection immediately and throws an error if the connection fails.
 
 **Parameters:**
 
 - `config.connection` (string | object, optional) - Redis connection string or config object
 - `config.defaultQueue` (string, optional) - Default queue name (defaults to `"default"`)
+
+**Returns:** `Promise<void>`
+
+**Throws:** `Error` if Redis connection cannot be established
+
+**Example:**
+```typescript
+// With await
+await configure({
+  connection: process.env.REDIS_URL,
+  defaultQueue: "myapp",
+});
+
+// With error handling
+configure({
+  connection: process.env.REDIS_URL,
+}).catch((error) => {
+  console.error("Configuration failed:", error);
+  process.exit(1);
+});
+```
 
 ### `startWorker()`
 

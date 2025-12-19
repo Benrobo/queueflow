@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import { GlobalWorker } from "./worker";
 
 /**
  * Configuration for Redis connection and queue settings.
@@ -32,20 +33,23 @@ let globalConfig: RedisConfig = {
  * Configures the Redis connection and default settings for Queueflow.
  *
  * Call this once at your application startup before defining any tasks.
+ * This will validate the Redis connection immediately and throw an error if invalid.
  *
  * @param config - Redis configuration
+ * @returns Promise that resolves when configuration is complete
+ * @throws {Error} If Redis connection cannot be established
  *
  * @example
  * ```typescript
  * import { configure } from "@benrobo/queueflow";
  *
- * // Using connection string
- * configure({
+ * // Using connection string with await
+ * await configure({
  *   connection: process.env.REDIS_URL || "redis://localhost:6379",
  *   defaultQueue: "myapp",
  * });
  *
- * // Using object configuration
+ * // Using object configuration with error handling
  * configure({
  *   connection: {
  *     host: "localhost",
@@ -53,11 +57,37 @@ let globalConfig: RedisConfig = {
  *     password: "your-password",
  *     db: 0,
  *   },
+ * }).catch((error) => {
+ *   console.error("Failed to configure Queueflow:", error);
+ *   process.exit(1);
  * });
  * ```
  */
-export function configure(config: RedisConfig): void {
+export async function configure(config: RedisConfig): Promise<void> {
   globalConfig = { ...globalConfig, ...config };
+
+  if (config.connection) {
+    const testRedis = createRedisConnection();
+
+    try {
+      await testRedis.ping();
+      await testRedis.quit();
+    } catch (error: any) {
+      await testRedis.quit().catch(() => {});
+      throw new Error(
+        `Failed to connect to Redis: ${error.message}. Please check your Redis configuration.`
+      );
+    }
+
+    try {
+      const worker = GlobalWorker.getInstance();
+      if (worker.taskHandlers.size > 0 && !worker.isStarted) {
+        await worker.start();
+      }
+    } catch (err) {
+      // GlobalWorker might not be initialized yet, which is fine
+    }
+  }
 }
 
 /**

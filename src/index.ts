@@ -88,7 +88,7 @@ export function startWorker(): void {
   worker.start();
 }
 
-export { configure };
+export { configure } from "./config";
 export type {
   Task,
   TaskConfig,

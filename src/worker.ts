@@ -5,10 +5,10 @@ import { createRedisConnection } from "./config";
 class GlobalWorker {
   private static instance: GlobalWorker;
   private workers: Map<string, Worker> = new Map();
-  private taskHandlers: Map<string, Function> = new Map();
+  public taskHandlers: Map<string, Function> = new Map();
   private errorHandlers: Map<string, Function | undefined> = new Map();
   private redis: Redis;
-  private isStarted = false;
+  public isStarted = false;
 
   private constructor() {
     this.redis = createRedisConnection();

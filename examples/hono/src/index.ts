@@ -13,6 +13,9 @@ import {
 configure({
   connection: process.env.REDIS_URL || "redis://localhost:6379",
   defaultQueue: "hono-example",
+}).catch((error) => {
+  console.error("Failed to configure Queueflow:", error);
+  process.exit(1);
 });
 
 const app = new Hono();

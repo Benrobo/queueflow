@@ -1,4 +1,12 @@
-import { scheduleTask } from "../src/index";
+import { configure, scheduleTask } from "../src/index";
+
+configure({
+  connection: process.env.REDIS_URL || "redis://localhost:6379",
+  defaultQueue: "test-queue",
+}).catch((error) => {
+  console.error("Failed to configure Queueflow:");
+  process.exit(1);
+});
 
 scheduleTask({
   id: "test.schedule",
