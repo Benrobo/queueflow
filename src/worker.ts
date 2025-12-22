@@ -1,6 +1,6 @@
 import { Worker } from "bullmq";
 import Redis from "ioredis";
-import { createRedisConnection, isDebugEnabled } from "./config";
+import { getSharedRedisConnection, isDebugEnabled } from "./config";
 
 class GlobalWorker {
   private static instance: GlobalWorker;
@@ -12,7 +12,7 @@ class GlobalWorker {
   public isStarted = false;
 
   private constructor() {
-    this.redis = createRedisConnection();
+    this.redis = getSharedRedisConnection();
   }
 
   static getInstance(): GlobalWorker {
@@ -113,7 +113,6 @@ class GlobalWorker {
     for (const worker of this.workers.values()) {
       await worker.close();
     }
-    await this.redis.quit();
     this.isStarted = false;
   }
 }

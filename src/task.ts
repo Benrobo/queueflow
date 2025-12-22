@@ -1,5 +1,5 @@
 import { Queue, JobsOptions } from "bullmq";
-import { createRedisConnection, getConfig } from "./config";
+import { getSharedRedisConnection, getConfig } from "./config";
 import { ensureWorkerStarted } from "./worker";
 import { GlobalWorker } from "./worker";
 
@@ -115,7 +115,7 @@ export class Task<T = any> {
 
   private ensureQueueInstance(): void {
     if (!this.queueInstance) {
-      const redis = createRedisConnection();
+      const redis = getSharedRedisConnection();
       this.queueInstance = new Queue(this.queue, { connection: redis });
     }
   }
@@ -172,7 +172,7 @@ export class ScheduledTask<T = any> {
 
   private ensureQueueInstance(): void {
     if (!this.queueInstance) {
-      const redis = createRedisConnection();
+      const redis = getSharedRedisConnection();
       this.queueInstance = new Queue(this.queue, { connection: redis });
     }
   }

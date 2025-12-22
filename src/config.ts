@@ -73,16 +73,19 @@ let globalConfig: RedisConfig = {
  * ```
  */
 export async function configure(config: RedisConfig): Promise<void> {
+  if (config.connection && sharedRedisConnection) {
+    resetSharedRedisConnection();
+  }
+
   globalConfig = { ...globalConfig, ...config };
 
   if (config.connection) {
-    const testRedis = createRedisConnection();
+    const testRedis = getSharedRedisConnection();
 
     try {
       await testRedis.ping();
-      await testRedis.quit();
     } catch (error: any) {
-      await testRedis.quit().catch(() => {});
+      resetSharedRedisConnection();
       throw new Error(
         `Failed to connect to Redis: ${error.message}. Please check your Redis configuration.`
       );
@@ -119,16 +122,77 @@ export function isDebugEnabled(): boolean {
   return globalConfig.debug === true;
 }
 
+let sharedRedisConnection: Redis | null = null;
+
+/**
+ * Gets or creates a shared Redis connection instance.
+ * This ensures only one Redis connection is created and reused across the application.
+ *
+ * @returns The shared Redis instance
+ * @internal
+ */
+export function getSharedRedisConnection(): Redis {
+  if (sharedRedisConnection) {
+    return sharedRedisConnection;
+  }
+
+  const config = getConfig();
+
+  if (!config.connection) {
+    throw new Error(
+      "Redis connection not configured. Please call configure() with a connection setting first."
+    );
+  }
+
+  try {
+    if (typeof config.connection === "string") {
+      sharedRedisConnection = new Redis(config.connection, {
+        maxRetriesPerRequest: null,
+      });
+    } else {
+      sharedRedisConnection = new Redis({
+        maxRetriesPerRequest: null,
+        ...config.connection,
+        host: config.connection.host ?? "localhost",
+        port: config.connection.port ?? 6379,
+      });
+    }
+
+    return sharedRedisConnection;
+  } catch (error) {
+    console.error("Error creating Redis connection:", error);
+    throw new Error("Failed to create Redis connection");
+  }
+}
+
+/**
+ * Resets the shared Redis connection (useful for testing or reconfiguration).
+ * @internal
+ */
+export function resetSharedRedisConnection(): void {
+  if (sharedRedisConnection) {
+    sharedRedisConnection.quit().catch(() => {});
+    sharedRedisConnection = null;
+  }
+}
+
 /**
  * Creates a Redis connection based on the current configuration.
+ * Note: This creates a new connection instance. For most use cases, use getSharedRedisConnection() instead.
  *
  * @returns A new Redis instance
  * @internal
  */
 export function createRedisConnection(): Redis {
-  try {
-    const config = getConfig();
+  const config = getConfig();
 
+  if (!config.connection) {
+    throw new Error(
+      "Redis connection not configured. Please call configure() with a connection setting first."
+    );
+  }
+
+  try {
     if (typeof config.connection === "string") {
       return new Redis(config.connection, {
         maxRetriesPerRequest: null,
@@ -136,10 +200,10 @@ export function createRedisConnection(): Redis {
     }
 
     return new Redis({
-      host: "localhost",
-      port: 6379,
       maxRetriesPerRequest: null,
       ...config.connection,
+      host: config.connection.host ?? "localhost",
+      port: config.connection.port ?? 6379,
     });
   } catch (error) {
     console.error("Error creating Redis connection:", error);
