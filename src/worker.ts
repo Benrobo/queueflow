@@ -8,11 +8,12 @@ class GlobalWorker {
   public taskHandlers: Map<string, Function> = new Map();
   private errorHandlers: Map<string, Function | undefined> = new Map();
   private taskQueues: Map<string, string> = new Map();
-  private redis: Redis;
+  private redis: Redis | null = null;
   public isStarted = false;
+  private connectionErrorLogged = false;
 
   private constructor() {
-    this.redis = getSharedRedisConnection();
+    // Don't create Redis connection here - wait until start() is called
   }
 
   static getInstance(): GlobalWorker {
@@ -41,6 +42,17 @@ class GlobalWorker {
   async start(): Promise<void> {
     if (this.isStarted) return;
 
+    // Get Redis connection when starting (not in constructor)
+    try {
+      this.redis = getSharedRedisConnection();
+      this.setupRedisErrorHandlers();
+    } catch (error: any) {
+      console.error(
+        `❌ Failed to start worker: ${error.message}. Please ensure Redis is running and configured.`
+      );
+      throw error;
+    }
+
     const queues = new Set(this.taskQueues.values());
 
     for (const queue of queues) {
@@ -55,14 +67,41 @@ class GlobalWorker {
     );
   }
 
+  private setupRedisErrorHandlers(): void {
+    if (!this.redis) return;
+
+    // Prevent connection error spam
+    this.redis.on("error", (error) => {
+      if (!this.connectionErrorLogged) {
+        console.error(
+          `❌ Redis connection error: ${error.message}. Please check your Redis configuration.`
+        );
+        this.connectionErrorLogged = true;
+      }
+    });
+
+    this.redis.on("connect", () => {
+      this.connectionErrorLogged = false;
+      if (isDebugEnabled()) {
+        console.log("✅ Redis connection established");
+      }
+    });
+  }
+
   private createQueueWorker(queueName: string, concurrency?: number): void {
+    if (!this.redis) {
+      throw new Error(
+        "Redis connection not available. Please call configure() first."
+      );
+    }
+
     const worker = new Worker(
       queueName,
       async (job) => {
         await this.processJob(job.name, job.data);
       },
       {
-        connection: this.redis,
+        connection: this.redis!,
         concurrency: concurrency || 5,
         removeOnComplete: { age: 100, count: 100 },
         removeOnFail: { age: 500, count: 500 },
@@ -113,6 +152,7 @@ class GlobalWorker {
     for (const worker of this.workers.values()) {
       await worker.close();
     }
+    this.workers.clear();
     this.isStarted = false;
   }
 }

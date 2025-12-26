@@ -83,6 +83,31 @@ export async function configure(config: RedisConfig): Promise<void> {
     const testRedis = getSharedRedisConnection();
 
     try {
+      // Wait for connection to be ready before pinging
+      if (testRedis.status !== "ready") {
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            testRedis.removeAllListeners("ready");
+            testRedis.removeAllListeners("error");
+            reject(
+              new Error("Connection timeout - Redis server may not be running")
+            );
+          }, 5000);
+
+          testRedis.once("ready", () => {
+            clearTimeout(timeout);
+            testRedis.removeAllListeners("error");
+            resolve();
+          });
+
+          testRedis.once("error", (err) => {
+            clearTimeout(timeout);
+            testRedis.removeAllListeners("ready");
+            reject(err);
+          });
+        });
+      }
+
       await testRedis.ping();
     } catch (error: any) {
       resetSharedRedisConnection();
@@ -145,13 +170,25 @@ export function getSharedRedisConnection(): Redis {
   }
 
   try {
+    const connectionOptions = {
+      maxRetriesPerRequest: null,
+      retryStrategy: (times: number) => {
+        // Limit retries to prevent spam - stop after 3 attempts
+        if (times > 3) {
+          return null; // Stop retrying
+        }
+        // Exponential backoff: 200ms, 400ms, 800ms
+        return Math.min(times * 200, 3000);
+      },
+      enableOfflineQueue: true, // Allow queuing commands when offline (needed for initial connection)
+      lazyConnect: false, // Connect immediately
+    };
+
     if (typeof config.connection === "string") {
-      sharedRedisConnection = new Redis(config.connection, {
-        maxRetriesPerRequest: null,
-      });
+      sharedRedisConnection = new Redis(config.connection, connectionOptions);
     } else {
       sharedRedisConnection = new Redis({
-        maxRetriesPerRequest: null,
+        ...connectionOptions,
         ...config.connection,
         host: config.connection.host ?? "localhost",
         port: config.connection.port ?? 6379,
@@ -193,14 +230,24 @@ export function createRedisConnection(): Redis {
   }
 
   try {
+    const connectionOptions = {
+      maxRetriesPerRequest: null,
+      retryStrategy: (times: number) => {
+        if (times > 3) {
+          return null;
+        }
+        return Math.min(times * 200, 3000);
+      },
+      enableOfflineQueue: true,
+      lazyConnect: false,
+    };
+
     if (typeof config.connection === "string") {
-      return new Redis(config.connection, {
-        maxRetriesPerRequest: null,
-      });
+      return new Redis(config.connection, connectionOptions);
     }
 
     return new Redis({
-      maxRetriesPerRequest: null,
+      ...connectionOptions,
       ...config.connection,
       host: config.connection.host ?? "localhost",
       port: config.connection.port ?? 6379,

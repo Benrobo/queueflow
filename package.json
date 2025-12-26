@@ -1,16 +1,20 @@
 {
   "name": "@benrobo/queueflow",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "A simple, type-safe task queue library built on BullMQ",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "packageManager": "bun@latest",
   "private": false,
+  "workspaces": [
+    "examples/*"
+  ],
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "bun run build",
     "publish": "npm publish --access public",
-    "test": "bun test/index.test.ts"
+    "test": "bun test/index.test.ts",
+    "dev": "bun run build && bun run examples/hono/src/index.ts"
   },
   "keywords": [
     "queue",
@@ -22,7 +26,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@benrobo/queueflow": "^0.0.3",
     "bullmq": "^5.0.0",
     "ioredis": "^5.3.2"
   },
